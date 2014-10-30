@@ -34,15 +34,16 @@ fn main() {
 
 	unsafe {
 		
-		let mut recordRange: *mut XRecordRange = XRecordAllocRange();
-		(&*recordRange).device_events.first = 2; // KeyPress
-		(&*recordRange).device_events.last = 6; // MotionNotify
+		let mut recordRange: XRecordRange = *XRecordAllocRange();
+		let mut recordRangePtr: *mut *mut XRecordRange = std::mem::transmute(&mut &mut recordRange);
+		recordRange.device_events.first = 2; // KeyPress
+		recordRange.device_events.last = 6; // MotionNotify
 		let context = XRecordCreateContext(
 			display,
 			0,
 			&mut XRecordAllClients,
 			0,
-			&mut recordRange,
+			recordRangePtr,
 			0
 		);
 	}
