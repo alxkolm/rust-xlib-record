@@ -1,0 +1,13 @@
+[package]
+
+name = "hello_world"
+version = "0.0.1"
+authors = ["alxkolm@gmail.com"]
+
+[dependencies.xlib]
+
+git = "https://github.com/servo/rust-xlib.git"
+
+[[bin]]
+
+name = "hello_world"
