@@ -1,5 +1,4 @@
 #![feature(globs)]
-extern crate xlib;
 extern crate libc;
 
 use xlib::{XOpenDisplay, XDisplayName, XQueryExtension, XInitExtension, XSynchronize};
@@ -8,13 +7,12 @@ use std::ptr;
 use xtst::{XRecordCreateContext, XRecordAllClients, XRecordAllocRange, XRecordRange, XRecordQueryVersion, XRecordEnableContext, XRecordEnableContextAsync,XRecordInterceptData, XRecordProcessReplies, XRecordFreeData};
 use std::mem;
 mod xtst;
-
-
+mod xlib;
 
 fn main() {
 	let mut a:  i8 = 0;
-	let display_control = unsafe { XOpenDisplay(&mut a)};
-	let display_data = unsafe { XOpenDisplay(&mut a)};
+	let display_control = unsafe { XOpenDisplay( &a)};
+	let display_data = unsafe { XOpenDisplay(&a)};
 	if display_data.is_null() || display_control.is_null() {
 		fail!("XOpenDisplay() failed!");
 	}
@@ -23,19 +21,16 @@ fn main() {
 		XSynchronize(display_control, 1);
 	}
 
-	let display_name = unsafe {XDisplayName(&mut a)};
+	let display_name = unsafe {XDisplayName(&a)};
 	let ext_name = "RECORD";
 
-
-
-	
 	unsafe {
 		// Check presence of Record extension
 		let arg2:*mut c_int = &mut 1;
 		let arg3:*mut c_int = &mut 1;
 		let arg4:*mut c_int = &mut 1;
-		let has_record = XQueryExtension(display_control, ext_name.to_c_str().as_ptr() as *mut i8,arg2,arg3,arg4);
-		let extension = XInitExtension(display_control, ext_name.to_c_str().as_ptr() as *mut i8);
+		let has_record = XQueryExtension(display_control, ext_name.to_c_str().as_ptr() as *const i8,arg2,arg3,arg4);
+		let extension = XInitExtension(display_control, ext_name.to_c_str().as_ptr() as *const i8);
 		if extension.is_null() {
 			fail!("XInitExtension() failed!");
 		}
@@ -64,7 +59,7 @@ fn main() {
 		if context == 0 {
 			fail!("Fail create Record context\n");
 		}
-		
+
 		// Run
 		let res = XRecordEnableContextAsync(display_data, context, Some(recordCallback), &mut 0);
 		if res == 0 {
@@ -76,9 +71,14 @@ fn main() {
 	}
 }
 
-extern "C" fn recordCallback(pointer:*mut i8, data: *mut XRecordInterceptData) {
+extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptData) {
 	println!("Receive event\n");
+	
 	unsafe {
-		XRecordFreeData(data);
+		let data = &*raw_data;
+		println!("Category {}", data.category);
+		println!("Time {}", data.server_time);
+		println!("Datalen {}", data.data_len);
+		XRecordFreeData(raw_data);
 	}
 }
