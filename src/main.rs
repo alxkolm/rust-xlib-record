@@ -57,9 +57,9 @@ fn main() {
 			display_control,
 			0,
 			&mut XRecordAllClients,
-			0,
+			1,
 			recordRangePtr,
-			0
+			1
 		);
 		if context == 0 {
 			fail!("Fail create Record context\n");
