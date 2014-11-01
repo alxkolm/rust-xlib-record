@@ -10,21 +10,19 @@ mod xtst;
 mod xlib;
 
 fn main() {
-	let mut a:  i8 = 0;
-	let display_control = unsafe { XOpenDisplay( &a)};
-	let display_data = unsafe { XOpenDisplay(&a)};
-	if display_data.is_null() || display_control.is_null() {
-		fail!("XOpenDisplay() failed!");
-	}
-
 	unsafe {
+		let mut a:  i8 = 0;
+		let display_control = XOpenDisplay( &a);
+		let display_data = XOpenDisplay(&a);
+
+		if display_data.is_null() || display_control.is_null() {
+			fail!("XOpenDisplay() failed!");
+		}
+
 		XSynchronize(display_control, 1);
-	}
-
-	let display_name = unsafe {XDisplayName(&a)};
-	let ext_name = "RECORD";
-
-	unsafe {
+		
+		let display_name = unsafe {XDisplayName(&a)};
+		let ext_name = "RECORD";
 		// Check presence of Record extension
 		let arg2:*mut c_int = &mut 1;
 		let arg3:*mut c_int = &mut 1;
