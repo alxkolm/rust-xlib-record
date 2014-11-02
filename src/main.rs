@@ -8,6 +8,20 @@ use xtst::{XRecordCreateContext, XRecordAllClients, XRecordAllocRange, XRecordRa
 use std::mem;
 mod xtst;
 mod xlib;
+mod xlibint;
+
+struct XRecordDatum {
+  xtype: ::libc::c_uchar,
+  event: ::xlib::XEvent,
+  req:   ::xlibint::xResourceReq,
+  reply: ::xlibint::xGenericReply,
+  error: ::xlibint::xError,
+  setup: ::xlibint::xConnSetupPrefix,
+}
+
+// let mut display_control: *mut xlib::Display  = std::mem::transmute(0);
+// let mut display_data: *mut xlib::Display  = std::mem::transmute(0);
+
 
 fn main() {
 	unsafe {
@@ -20,7 +34,7 @@ fn main() {
 		}
 
 		XSynchronize(display_control, 1);
-		
+
 		let display_name = unsafe {XDisplayName(&a)};
 		let ext_name = "RECORD";
 		// Check presence of Record extension
@@ -70,13 +84,36 @@ fn main() {
 }
 
 extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptData) {
-	println!("Receive event\n");
-	
 	unsafe {
+
 		let data = &*raw_data;
 		println!("Category {}", data.category);
+		if data.category != xtst::XRecordFromServer {
+			return;
+		}
 		println!("Time {}", data.server_time);
 		println!("Datalen {}", data.data_len);
+		println!("Data {}", data.data);
+		let mut xdatum_ptr: *mut XRecordDatum = data.data as *mut XRecordDatum;
+		let mut xdatum = &*xdatum_ptr;
+		
+		let mut event = xdatum.event;
+		println!("Type {}", xdatum.xtype);
+
+		if xdatum.xtype == xtst::KeyPress {
+			let mut key_event_ptr: *mut ::xlib::XKeyEvent = event.xkey();
+			let mut key_event = &* key_event_ptr;
+			let mut display: *mut xlib::Display = key_event.display;
+			// let mut key = xlib::XKeysymToString(xlib::XKeycodeToKeysym(display, key_event.keycode as u8, 0));
+			let window: xlib::Window = key_event.window;
+			println!("KeyPress {}", key_event.keycode);
+			println!("Window {}", window);
+			let mut win_name: &str = "";
+			let mut win_name_c = win_name.to_c_str().as_ptr();
+			xlib::XFetchName(key_event.display, window, std::mem::transmute(&mut win_name_c));
+			println!("Window name {}", win_name);
+		}
 		XRecordFreeData(raw_data);
 	}
+	println!("\n");
 }
