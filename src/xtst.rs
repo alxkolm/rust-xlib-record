@@ -33,12 +33,60 @@ use xlib::*;
 // #define XRecordStartOfData    4
 // #define XRecordEndOfData    5
 
-pub const XRecordCurrentClients: ::libc::c_int = 1;
-pub const XRecordFutureClients: ::libc::c_int = 2;
+pub const XRecordCurrentClients: ::libc::c_ulong = 1;
+pub const XRecordFutureClients: ::libc::c_ulong = 2;
 pub const XRecordAllClients: ::libc::c_ulong = 3;
+
+pub const XRecordFromServer: ::libc::c_int = 0;
+pub const XRecordFromClient: ::libc::c_int = 1;
+pub const XRecordClientStarted: ::libc::c_int = 2;
+pub const XRecordClientDied: ::libc::c_int = 3;
+pub const XRecordStartOfData: ::libc::c_int = 4;
+pub const XRecordEndOfData: ::libc::c_int = 5;
 
 pub type XRecordClientSpec = ::libc::c_ulong;
 pub type XRecordContext = ::libc::c_ulong;
+
+/* Event names.  Used in "type" field in XEvent structures.  Not to be
+confused with event masks above.  They start from 2 because 0 and 1
+are reserved in the protocol for errors and replies. */
+
+pub const KeyPress: ::libc::c_uchar = 2;
+pub const KeyRelease: ::libc::c_uchar = 3;
+pub const ButtonPress: ::libc::c_uchar = 4;
+pub const ButtonRelease: ::libc::c_uchar = 5;
+pub const MotionNotify: ::libc::c_uchar = 6;
+pub const EnterNotify: ::libc::c_uchar = 7;
+pub const LeaveNotify: ::libc::c_uchar = 8;
+pub const FocusIn: ::libc::c_uchar = 9;
+pub const FocusOut: ::libc::c_uchar = 10;
+pub const KeymapNotify: ::libc::c_uchar = 11;
+pub const Expose: ::libc::c_uchar = 12;
+pub const GraphicsExpose: ::libc::c_uchar = 13;
+pub const NoExpose: ::libc::c_uchar = 14;
+pub const VisibilityNotify: ::libc::c_uchar = 15;
+pub const CreateNotify: ::libc::c_uchar = 16;
+pub const DestroyNotify: ::libc::c_uchar = 17;
+pub const UnmapNotify: ::libc::c_uchar = 18;
+pub const MapNotify: ::libc::c_uchar = 19;
+pub const MapRequest: ::libc::c_uchar = 20;
+pub const ReparentNotify: ::libc::c_uchar = 21;
+pub const ConfigureNotify: ::libc::c_uchar = 22;
+pub const ConfigureRequest: ::libc::c_uchar = 23;
+pub const GravityNotify: ::libc::c_uchar = 24;
+pub const ResizeRequest: ::libc::c_uchar = 25;
+pub const CirculateNotify: ::libc::c_uchar = 26;
+pub const CirculateRequest: ::libc::c_uchar = 27;
+pub const PropertyNotify: ::libc::c_uchar = 28;
+pub const SelectionClear: ::libc::c_uchar = 29;
+pub const SelectionRequest: ::libc::c_uchar = 30;
+pub const SelectionNotify: ::libc::c_uchar = 31;
+pub const ColormapNotify: ::libc::c_uchar = 32;
+pub const ClientMessage: ::libc::c_uchar = 33;
+pub const MappingNotify: ::libc::c_uchar = 34;
+pub const GenericEvent: ::libc::c_uchar = 35;
+pub const LASTEvent: ::libc::c_uchar = 36;
+
 #[repr(C)]
 pub struct Struct_Unnamed1 {
     pub first: ::libc::c_uchar,

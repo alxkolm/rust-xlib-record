@@ -100,18 +100,11 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		let mut event = xdatum.event;
 		println!("Type {}", xdatum.xtype);
 
-		if xdatum.xtype == xtst::KeyPress {
-			let mut key_event_ptr: *mut ::xlib::XKeyEvent = event.xkey();
-			let mut key_event = &* key_event_ptr;
-			let mut display: *mut xlib::Display = key_event.display;
-			// let mut key = xlib::XKeysymToString(xlib::XKeycodeToKeysym(display, key_event.keycode as u8, 0));
-			let window: xlib::Window = key_event.window;
-			println!("KeyPress {}", key_event.keycode);
-			println!("Window {}", window);
-			let mut win_name: &str = "";
-			let mut win_name_c = win_name.to_c_str().as_ptr();
-			xlib::XFetchName(key_event.display, window, std::mem::transmute(&mut win_name_c));
-			println!("Window name {}", win_name);
+		// Catch key event
+		if xdatum.xtype == xtst::KeyPress || xdatum.xtype == xtst::KeyRelease {
+			let key_event: *mut xlib::XKeyEvent = event.xkey();
+			println!("KeyPress {}", (*key_event).keycode);
+
 		}
 		XRecordFreeData(raw_data);
 	}
