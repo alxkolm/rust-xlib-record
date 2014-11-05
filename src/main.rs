@@ -134,6 +134,9 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		while res == 0 && i < 2 {
 			print!(".");
 			println!("current_window {}", *current_window);
+			if *current_window == 0 {
+				break;
+			}
 			res = xutil::XGetWMName(display_control, *current_window, wm_name);
 			
 			
@@ -204,3 +207,27 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 // 	let temp = unsafe{CString::new(std::mem::transmute(string), true)};
 // 	let a: &str = temp.as_str().unwrap();
 // }
+struct Display {
+    display: *mut xlib::Display,
+}
+
+impl Display {
+	fn get_input_focus(&self) {
+		let current_window: *mut xlib::Window = &mut 0;
+		let revert_to_return: *mut i32 = &mut 0;
+		xlib::XGetInputFocus(self.display, current_window, revert_to_return);
+		Window {display: &self}
+	}
+}
+
+struct Window {
+    id: u64, // XID
+    display: &Display
+}
+
+impl Window {
+	fn get_wm_name(&self) {
+		let prop: xutil::XTextProperty;
+		let res = xutil::XGetWMName(self.display.display, self.id, prop);
+	}
+}
