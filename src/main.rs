@@ -207,27 +207,27 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 // 	let temp = unsafe{CString::new(std::mem::transmute(string), true)};
 // 	let a: &str = temp.as_str().unwrap();
 // }
-struct Display {
+struct Display<'a> {
     display: *mut xlib::Display,
 }
 
-impl Display {
-	fn get_input_focus(&self) {
+impl<'a> Display<'a> {
+	fn get_input_focus(&self) -> Window{
 		let current_window: *mut xlib::Window = &mut 0;
 		let revert_to_return: *mut i32 = &mut 0;
-		xlib::XGetInputFocus(self.display, current_window, revert_to_return);
-		Window {display: &self}
+		unsafe{xlib::XGetInputFocus(self.display, current_window, revert_to_return)};
+		Window {id: 0, display: self}
 	}
 }
 
-struct Window {
+struct Window<'a> {
     id: u64, // XID
-    display: &Display
+    display: &'a Display<'a>
 }
 
-impl Window {
+impl<'a> Window<'a> {
 	fn get_wm_name(&self) {
-		let prop: xutil::XTextProperty;
-		let res = xutil::XGetWMName(self.display.display, self.id, prop);
+		let mut prop: *mut xutil::XTextProperty = 0 as *mut xutil::XTextProperty;
+		let res = unsafe{xutil::XGetWMName(self.display.display, self.id, prop)};
 	}
 }
