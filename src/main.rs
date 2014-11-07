@@ -25,7 +25,7 @@ struct XRecordDatum {
 // let mut display_data: *mut xlib::Display  = std::mem::transmute(0);
 static mut display_control: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
 // static mut display_data: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
-static mut display_data: Display<'a> = Display {display: 0 as *mut xlib::Display};
+static mut display_data: Display<'static> = Display {display: 0 as *mut xlib::Display};
 static mut event_count:u32 = 0;
 fn main() {
 	unsafe {
