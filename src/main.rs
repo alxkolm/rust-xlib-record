@@ -23,21 +23,18 @@ struct XRecordDatum {
 
 // let mut display_control: *mut xlib::Display  = std::mem::transmute(0);
 // let mut display_data: *mut xlib::Display  = std::mem::transmute(0);
-static mut display_control: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
+// static mut display_control: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
 // static mut display_data: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
+static mut display_control: Display<'static> = Display {display: 0 as *mut xlib::Display};
 static mut display_data: Display<'static> = Display {display: 0 as *mut xlib::Display};
 static mut event_count:u32 = 0;
 fn main() {
 	unsafe {
 		let mut a:  i8 = 0;
-		display_control = XOpenDisplay(&a);
+		display_control = Display::new();
 		display_data = Display::new();
 
-		if display_control.is_null() {
-			panic!("XOpenDisplay() failed!");
-		}
-
-		XSynchronize(display_control, 1);
+		XSynchronize(display_control.display, 1);
 
 		let display_name = unsafe {XDisplayName(&a)};
 		let ext_name = "RECORD";
@@ -45,8 +42,8 @@ fn main() {
 		let arg2:*mut c_int = &mut 1;
 		let arg3:*mut c_int = &mut 1;
 		let arg4:*mut c_int = &mut 1;
-		let has_record = XQueryExtension(display_control, ext_name.to_c_str().as_ptr() as *const i8,arg2,arg3,arg4);
-		let extension = XInitExtension(display_control, ext_name.to_c_str().as_ptr() as *const i8);
+		let has_record = XQueryExtension(display_control.display, ext_name.to_c_str().as_ptr() as *const i8,arg2,arg3,arg4);
+		let extension = XInitExtension(display_control.display, ext_name.to_c_str().as_ptr() as *const i8);
 		if extension.is_null() {
 			panic!("XInitExtension() failed!");
 		}
@@ -54,7 +51,7 @@ fn main() {
 		// Get version
 		let mut versionMajor: c_int = 0;
 		let mut versionMinor: c_int = 0;
-		XRecordQueryVersion(display_control, &mut versionMajor, &mut versionMinor);
+		XRecordQueryVersion(display_control.display, &mut versionMajor, &mut versionMinor);
 		println!("RECORD extension version {}.{}", versionMajor, versionMinor);
 
 		// Prepare record range
@@ -65,7 +62,7 @@ fn main() {
 		
 		// Create context
 		let context = XRecordCreateContext(
-			display_control,
+			display_control.display,
 			0,
 			&mut XRecordAllClients,
 			1,
@@ -111,7 +108,7 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		if xdatum.xtype == xtst::KeyPress || xdatum.xtype == xtst::KeyRelease {
 			// extract key code
 			let raw_bytes: &mut [u8,..4] = std::mem::transmute(data.data);
-			let c_char  = XKeysymToString(XKeycodeToKeysym(display_control, raw_bytes[1], 0));
+			let c_char  = XKeysymToString(XKeycodeToKeysym(display_control.display, raw_bytes[1], 0));
 			let c_string = CString::new(std::mem::transmute(c_char), false);
 			let char: &str = c_string.as_str().unwrap();
 			println!("Keycode: {}, Character {}", raw_bytes[1], char);
@@ -122,7 +119,7 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		// get current focus window
 		let current_window: *mut xlib::Window = &mut 0;
 		let revert_to_return: *mut i32 = &mut 0;
-		xlib::XGetInputFocus(display_control, current_window, revert_to_return);
+		xlib::XGetInputFocus(display_control.display, current_window, revert_to_return);
 		println!("revertToReturn {}", *revert_to_return);
 		let mut j = 0u;
 		let mut wm_name: *mut xutil::XTextProperty = std::mem::transmute(&mut j);
@@ -130,7 +127,7 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		let mut tmp =0i8;
 		let mut c_wm_name: CString = CString::new(&tmp,false);
 		let mut res = 0;
-		// res = xutil::XGetWMName(display_control, *current_window, wm_name);
+		// res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
 		let mut i = 0u;
 		while res == 0 && i < 2 {
 			print!(".");
@@ -138,7 +135,7 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 			if *current_window == 0 {
 				break;
 			}
-			res = xutil::XGetWMName(display_control, *current_window, wm_name);
+			res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
 			
 			
 			if res == 0 {
@@ -147,7 +144,7 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 				let mut parent: xlib::Window = 0;
 				let mut childrens: *mut xlib::Window = &mut 0u64;
 				let mut nchildren: u32 = 0;
-				let r2 = xlib::XQueryTree(display_control, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
+				let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
 				if r2 == 0 {
 					print!("*");
 				} else {
@@ -169,13 +166,13 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 				panic!("");
 			}
 			println!("encoding: {}", (*wm_name).encoding);
-			let encoding_name = xlib::XGetAtomName(display_control, (*wm_name).encoding);
+			let encoding_name = xlib::XGetAtomName(display_control.display, (*wm_name).encoding);
 			let encoding_name_string = CString::new(std::mem::transmute(encoding_name), false);
 			println!("encoding name: {}", encoding_name_string.as_str().unwrap());
 			let mut tmp2 = 0i8;
 			let mut list: *mut *mut ::libc::c_char = std::mem::transmute(&mut &mut tmp2);
 			let mut list_count: i32 = 0;
-			let res3 = xutil::XmbTextPropertyToTextList(display_control, std::mem::transmute(wm_name), &mut list, &mut list_count);
+			let res3 = xutil::XmbTextPropertyToTextList(display_control.display, std::mem::transmute(wm_name), &mut list, &mut list_count);
 			println!("convert result: {}", res3);
 			if res3 == 0 {
 				println!("list count {}", list_count);
