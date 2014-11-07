@@ -31,9 +31,9 @@ fn main() {
 	unsafe {
 		let mut a:  i8 = 0;
 		display_control = XOpenDisplay(&a);
-		display_data = XOpenDisplay(&a);
+		display_data = Display::new();
 
-		if display_data.is_null() || display_control.is_null() {
+		if display_control.is_null() {
 			panic!("XOpenDisplay() failed!");
 		}
 
@@ -77,13 +77,13 @@ fn main() {
 		}
 
 		// Run
-		let res = XRecordEnableContextAsync(display_data, context, Some(recordCallback), &mut 0);
+		let res = XRecordEnableContextAsync(display_data.display, context, Some(recordCallback), &mut 0);
 		if res == 0 {
 			panic!("Cound not enable the Record context!\n");
 		}
-		xtst::XRecordFreeContext(display_data, context);
+		xtst::XRecordFreeContext(display_data.display, context);
 		loop {
-			XRecordProcessReplies(display_data);
+			XRecordProcessReplies(display_data.display);
 		}
 	}
 }
@@ -213,6 +213,16 @@ struct Display<'a> {
 }
 
 impl<'a> Display<'a> {
+	fn new() -> Display<'a> {
+		Display {display: unsafe {
+			let mut a:  i8 = 0;
+			let dpy = XOpenDisplay(&a);
+			if dpy.is_null() {
+				panic!("XOpenDisplay() failed!");
+			}
+			dpy
+		}}
+	}
 	fn get_input_focus(&self) -> Window{
 		let current_window: *mut xlib::Window = &mut 0;
 		let revert_to_return: *mut i32 = &mut 0;
