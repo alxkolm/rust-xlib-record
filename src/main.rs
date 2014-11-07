@@ -24,7 +24,8 @@ struct XRecordDatum {
 // let mut display_control: *mut xlib::Display  = std::mem::transmute(0);
 // let mut display_data: *mut xlib::Display  = std::mem::transmute(0);
 static mut display_control: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
-static mut display_data: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
+// static mut display_data: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
+static mut display_data: Display<'a> = Display {display: 0 as *mut xlib::Display};
 static mut event_count:u32 = 0;
 fn main() {
 	unsafe {
@@ -33,7 +34,7 @@ fn main() {
 		display_data = XOpenDisplay(&a);
 
 		if display_data.is_null() || display_control.is_null() {
-			fail!("XOpenDisplay() failed!");
+			panic!("XOpenDisplay() failed!");
 		}
 
 		XSynchronize(display_control, 1);
@@ -47,7 +48,7 @@ fn main() {
 		let has_record = XQueryExtension(display_control, ext_name.to_c_str().as_ptr() as *const i8,arg2,arg3,arg4);
 		let extension = XInitExtension(display_control, ext_name.to_c_str().as_ptr() as *const i8);
 		if extension.is_null() {
-			fail!("XInitExtension() failed!");
+			panic!("XInitExtension() failed!");
 		}
 
 		// Get version
@@ -72,13 +73,13 @@ fn main() {
 			1
 		);
 		if context == 0 {
-			fail!("Fail create Record context\n");
+			panic!("Fail create Record context\n");
 		}
 
 		// Run
 		let res = XRecordEnableContextAsync(display_data, context, Some(recordCallback), &mut 0);
 		if res == 0 {
-			fail!("Cound not enable the Record context!\n");
+			panic!("Cound not enable the Record context!\n");
 		}
 		xtst::XRecordFreeContext(display_data, context);
 		loop {
@@ -165,7 +166,7 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 			println!("wmname found!");
 			println!("format: {}", (*wm_name).format);
 			if (*wm_name).format != 8 {
-				fail!("");
+				panic!("");
 			}
 			println!("encoding: {}", (*wm_name).encoding);
 			let encoding_name = xlib::XGetAtomName(display_control, (*wm_name).encoding);
@@ -203,10 +204,10 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 	println!("\n");
 }
 
-// fn string_convert(string: *mut libc::c_char) -> &'static str{
-// 	let temp = unsafe{CString::new(std::mem::transmute(string), true)};
-// 	let a: &str = temp.as_str().unwrap();
-// }
+
+// ============================================================================
+// Simple naive wrappers around X stuff
+// ============================================================================
 struct Display<'a> {
     display: *mut xlib::Display,
 }
