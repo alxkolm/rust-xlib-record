@@ -290,7 +290,10 @@ impl<'a> Window<'a> {
 							// let c = std::c_vec::CVec::new(children, nchildren);
 							let b: Vec<Window> = Vec::new();
 							for i in range(0, nchildren as int){
-								b.push(Window{id: *children.offset(i), display: self.display});
+								b.push(Window{
+									id: *children.offset(i),
+									display: self.display
+								});
 							}
 							Some(b)
 						}
