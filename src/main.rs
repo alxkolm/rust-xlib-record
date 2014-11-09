@@ -131,24 +131,28 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		let mut i = 0u;
 		while res == 0 && i < 2 {
 			print!(".");
-			println!("current_window {}", *current_window);
+			println!("current_window {}", current_window.id);
 			if current_window.id == 0 {
 				break;
 			}
-			res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
+			// res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
 			match current_window.get_wm_name() {
 				None => {
-					println!("Move to parent");
-					let mut root: xlib::Window = 0;
-					let mut parent: xlib::Window = 0;
-					let mut childrens: *mut xlib::Window = &mut 0u64;
-					let mut nchildren: u32 = 0;
-					let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
-					if r2 == 0 {
-						print!("*");
-					} else {
-						println!("parent {}", parent);
-						*current_window = parent;
+					// println!("Move to parent");
+					// let mut root: xlib::Window = 0;
+					// let mut parent: xlib::Window = 0;
+					// let mut childrens: *mut xlib::Window = &mut 0u64;
+					// let mut nchildren: u32 = 0;
+					// let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
+					// if r2 == 0 {
+					// 	print!("*");
+					// } else {
+					// 	println!("parent {}", parent);
+					// 	*current_window = parent;
+					// }
+					match current_window.get_tree() {
+						WindowTree{parent: parent, children: _} => {},
+						_ => {}
 					}
 				}
 			}
