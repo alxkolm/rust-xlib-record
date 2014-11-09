@@ -117,10 +117,10 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 			// println!("nitems {}", (&*wm_name).nitems);
 		}
 		// get current focus window
-		let current_window: *mut xlib::Window = &mut 0;
-		let revert_to_return: *mut i32 = &mut 0;
-		xlib::XGetInputFocus(display_control.display, current_window, revert_to_return);
-		println!("revertToReturn {}", *revert_to_return);
+		// let current_window: *mut xlib::Window = &mut 0;
+		// let revert_to_return: *mut i32 = &mut 0;
+		let current_window = display_control.get_input_focus();
+		// println!("revertToReturn {}", *revert_to_return);
 		let mut j = 0u;
 		let mut wm_name: *mut xutil::XTextProperty = std::mem::transmute(&mut j);
 		let mut wm_name_true: &str = "";
@@ -132,25 +132,41 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		while res == 0 && i < 2 {
 			print!(".");
 			println!("current_window {}", *current_window);
-			if *current_window == 0 {
+			if current_window.id == 0 {
 				break;
 			}
 			res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
+			match current_window.get_wm_name() {
+				None => {
+					println!("Move to parent");
+					let mut root: xlib::Window = 0;
+					let mut parent: xlib::Window = 0;
+					let mut childrens: *mut xlib::Window = &mut 0u64;
+					let mut nchildren: u32 = 0;
+					let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
+					if r2 == 0 {
+						print!("*");
+					} else {
+						println!("parent {}", parent);
+						*current_window = parent;
+					}
+				}
+			}
 			
 			
 			if res == 0 {
-				println!("Move to parent");
-				let mut root: xlib::Window = 0;
-				let mut parent: xlib::Window = 0;
-				let mut childrens: *mut xlib::Window = &mut 0u64;
-				let mut nchildren: u32 = 0;
-				let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
-				if r2 == 0 {
-					print!("*");
-				} else {
-					println!("parent {}", parent);
-					*current_window = parent;
-				}
+				// println!("Move to parent");
+				// let mut root: xlib::Window = 0;
+				// let mut parent: xlib::Window = 0;
+				// let mut childrens: *mut xlib::Window = &mut 0u64;
+				// let mut nchildren: u32 = 0;
+				// let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
+				// if r2 == 0 {
+				// 	print!("*");
+				// } else {
+				// 	println!("parent {}", parent);
+				// 	*current_window = parent;
+				// }
 			}
 			// get parent window
 			i += 1;
@@ -234,8 +250,66 @@ struct Window<'a> {
 }
 
 impl<'a> Window<'a> {
-	fn get_wm_name(&self) {
-		let mut prop: *mut xutil::XTextProperty = 0 as *mut xutil::XTextProperty;
-		let res = unsafe{xutil::XGetWMName(self.display.display, self.id, prop)};
+	fn get_wm_name(&self) -> Option<String> {
+		let mut a:String = String::new();
+		let wmname = unsafe {
+			let mut window_name: *mut i8 = 0 as *mut i8;
+			let res = xlib::XFetchName(self.display.display, self.id, &mut window_name);
+			if res != 0 {
+				let c_wm_name = CString::new(std::mem::transmute(window_name), false);
+				// xlib::XFree(&mut window_name);
+				Some(String::from_str(c_wm_name.as_str().unwrap()))
+
+			} else {
+				None
+			}
+		};
+		wmname
 	}
+	fn get_tree (&self) -> Option<WindowTree> {
+		unsafe {
+			let mut root: xlib::Window = 0;
+			let mut parent: xlib::Window = 0;
+			let mut children: *mut xlib::Window = &mut 0u64;
+			let mut nchildren: u32 = 0;
+
+			let res = xlib::XQueryTree(
+				self.display.display,
+				self.id,
+				&mut root,
+				&mut parent,
+				&mut children,
+				&mut nchildren);
+
+			match res {
+				0 => None,
+				_ => {
+					let childs = match nchildren {
+						0 => None,
+						_ => {
+							// let c = std::c_vec::CVec::new(children, nchildren);
+							let b: Vec<Window> = Vec::new();
+							for i in range(0, nchildren as int){
+								b.push(Window{id: *children.offset(i), display: self.display});
+							}
+							Some(b)
+						}
+					};
+
+					Some(WindowTree {
+						parent: Window{
+							id: parent,
+							display: self.display,
+						},
+						children: childs
+					})
+				}
+			}
+		}
+	}
+}
+
+struct WindowTree<'a> {
+    parent: Window<'a>,
+    children: Option<Vec<Window<'a>>>,
 }
