@@ -119,24 +119,27 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		// get current focus window
 		// let current_window: *mut xlib::Window = &mut 0;
 		// let revert_to_return: *mut i32 = &mut 0;
-		let current_window = display_control.get_input_focus();
+		let mut current_window = display_control.get_input_focus();
+		let mut parent_window: Option<Window> = None;
 		// println!("revertToReturn {}", *revert_to_return);
-		let mut j = 0u;
-		let mut wm_name: *mut xutil::XTextProperty = std::mem::transmute(&mut j);
-		let mut wm_name_true: &str = "";
-		let mut tmp =0i8;
-		let mut c_wm_name: CString = CString::new(&tmp,false);
-		let mut res = 0;
+		// let mut j = 0u;
+		// let mut wm_name: *mut xutil::XTextProperty = std::mem::transmute(&mut j);
+		// let mut wm_name_true: &str = "";
+		let mut wm_name_str: Option<String> = None;
+		// let mut tmp =0i8;
+		// let mut c_wm_name: CString = CString::new(&tmp,false);
+		// let mut res = 0;
 		// res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
 		let mut i = 0u;
-		while res == 0 && i < 2 {
-			print!(".");
-			println!("current_window {}", current_window.id);
+		while i < 2 {
+			// print!(".");
+			// println!("current_window {}", current_window.id);
 			if current_window.id == 0 {
 				break;
 			}
 			// res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
-			match current_window.get_wm_name() {
+			wm_name_str = current_window.get_wm_name();
+			match wm_name_str {
 				None => {
 					// println!("Move to parent");
 					// let mut root: xlib::Window = 0;
@@ -150,71 +153,90 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 					// 	println!("parent {}", parent);
 					// 	*current_window = parent;
 					// }
-					match current_window.get_tree() {
-						WindowTree{parent: parent, children: _} => {},
-						_ => {}
+					let tree = current_window.get_tree();
+					parent_window = match tree {
+						Some(WindowTree{parent: parent, children: _}) => {
+							Some(parent)
+						},
+						_ => None
 					}
+					
+				},
+				Some(ref wmname) => {
+					break;
 				}
 			}
 			
+			current_window = match parent_window {
+				Some(win) => win,
+				_ => current_window
+			};
 			
-			if res == 0 {
-				// println!("Move to parent");
-				// let mut root: xlib::Window = 0;
-				// let mut parent: xlib::Window = 0;
-				// let mut childrens: *mut xlib::Window = &mut 0u64;
-				// let mut nchildren: u32 = 0;
-				// let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
-				// if r2 == 0 {
-				// 	print!("*");
-				// } else {
-				// 	println!("parent {}", parent);
-				// 	*current_window = parent;
-				// }
-			}
+			// if res == 0 {
+			// 	// println!("Move to parent");
+			// 	// let mut root: xlib::Window = 0;
+			// 	// let mut parent: xlib::Window = 0;
+			// 	// let mut childrens: *mut xlib::Window = &mut 0u64;
+			// 	// let mut nchildren: u32 = 0;
+			// 	// let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
+			// 	// if r2 == 0 {
+			// 	// 	print!("*");
+			// 	// } else {
+			// 	// 	println!("parent {}", parent);
+			// 	// 	*current_window = parent;
+			// 	// }
+			// }
 			// get parent window
 			i += 1;
 		}
-		println!("---");
-		if res == 0 {
-			println!("no wmname");
-		} else {
-			// extract name from XTextProperty
-			println!("wmname found!");
-			println!("format: {}", (*wm_name).format);
-			if (*wm_name).format != 8 {
-				panic!("");
+		match wm_name_str {
+			Some(ref name) => {
+				println!("WM_NAME: {}", *name);
+			},
+			None => {
+				println!("WM_NAME: none");
 			}
-			println!("encoding: {}", (*wm_name).encoding);
-			let encoding_name = xlib::XGetAtomName(display_control.display, (*wm_name).encoding);
-			let encoding_name_string = CString::new(std::mem::transmute(encoding_name), false);
-			println!("encoding name: {}", encoding_name_string.as_str().unwrap());
-			let mut tmp2 = 0i8;
-			let mut list: *mut *mut ::libc::c_char = std::mem::transmute(&mut &mut tmp2);
-			let mut list_count: i32 = 0;
-			let res3 = xutil::XmbTextPropertyToTextList(display_control.display, std::mem::transmute(wm_name), &mut list, &mut list_count);
-			println!("convert result: {}", res3);
-			if res3 == 0 {
-				println!("list count {}", list_count);
-				c_wm_name = CString::new(std::mem::transmute(*list), false);
-				wm_name_true = c_wm_name.as_str().unwrap();
-				println!("wm_name: {}", wm_name_true);
-				xlib::XFreeStringList(list);
-			} else {
-				c_wm_name = CString::new(std::mem::transmute((*wm_name).value), false);
-				// wm_name_true = c_wm_name.as_str().unwrap();
-				println!("wm_name bytes: {}", c_wm_name.as_bytes());
-				// ая -      27 45 76 208 239 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-				// бв -      27 45 76 209 210 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-				// zx -      122 120 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-				// длодлод - 27 45 76 212 219 222 212 219 222 212 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-				// zx • - Sublime Text (UNREGISTERED)
-
-				println!("wm_name: {}", c_wm_name);
-				println!("wm_name len w/o null: {}", c_wm_name.len());
-			}
-			
 		}
+		// println!("---");
+		// if res == 0 {
+		// 	println!("no wmname");
+		// } else {
+		// 	// extract name from XTextProperty
+		// 	println!("wmname found!");
+		// 	println!("format: {}", (*wm_name).format);
+		// 	if (*wm_name).format != 8 {
+		// 		panic!("");
+		// 	}
+		// 	println!("encoding: {}", (*wm_name).encoding);
+		// 	let encoding_name = xlib::XGetAtomName(display_control.display, (*wm_name).encoding);
+		// 	let encoding_name_string = CString::new(std::mem::transmute(encoding_name), false);
+		// 	println!("encoding name: {}", encoding_name_string.as_str().unwrap());
+		// 	let mut tmp2 = 0i8;
+		// 	let mut list: *mut *mut ::libc::c_char = std::mem::transmute(&mut &mut tmp2);
+		// 	let mut list_count: i32 = 0;
+		// 	let res3 = xutil::XmbTextPropertyToTextList(display_control.display, std::mem::transmute(wm_name), &mut list, &mut list_count);
+		// 	println!("convert result: {}", res3);
+		// 	if res3 == 0 {
+		// 		println!("list count {}", list_count);
+		// 		c_wm_name = CString::new(std::mem::transmute(*list), false);
+		// 		wm_name_true = c_wm_name.as_str().unwrap();
+		// 		println!("wm_name: {}", wm_name_true);
+		// 		xlib::XFreeStringList(list);
+		// 	} else {
+		// 		c_wm_name = CString::new(std::mem::transmute((*wm_name).value), false);
+		// 		// wm_name_true = c_wm_name.as_str().unwrap();
+		// 		println!("wm_name bytes: {}", c_wm_name.as_bytes());
+		// 		// ая -      27 45 76 208 239 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
+		// 		// бв -      27 45 76 209 210 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
+		// 		// zx -      122 120 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
+		// 		// длодлод - 27 45 76 212 219 222 212 219 222 212 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
+		// 		// zx • - Sublime Text (UNREGISTERED)
+
+		// 		println!("wm_name: {}", c_wm_name);
+		// 		println!("wm_name len w/o null: {}", c_wm_name.len());
+		// 	}
+			
+		// }
 
 		XRecordFreeData(raw_data);
 	}
@@ -292,7 +314,7 @@ impl<'a> Window<'a> {
 						0 => None,
 						_ => {
 							// let c = std::c_vec::CVec::new(children, nchildren);
-							let b: Vec<Window> = Vec::new();
+							let mut b: Vec<Window> = Vec::new();
 							for i in range(0, nchildren as int){
 								b.push(Window{
 									id: *children.offset(i),
