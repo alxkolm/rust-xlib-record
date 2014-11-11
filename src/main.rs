@@ -205,13 +205,46 @@ impl<'a> Window<'a> {
 				let c_wm_name = CString::new(std::mem::transmute(window_name), false);
 				// xlib::XFree(&mut window_name);
 				Some(String::from_str(c_wm_name.as_str().unwrap()))
-
 			} else {
+				// Try get _NET_WM_NAME
 				None
 			}
 		};
 		wmname
 	}
+	fn get_property(&self, property_name: &str, property_type: &str) -> Option<CVec>{
+		unsafe {
+			let xa_property_type: xlibint::Atom = xlib::XInternAtom(self.display, property_type.to_c_str().as_ptr(), 0);
+			let xa_property_name: xlibint::Atom = xlib::XInternAtom(self.display, property_name.to_c_str().as_ptr(), 0)
+			let mut actual_type_return  : xlibint::Atom     = 0;
+			let mut actual_format_return: libc::c_int       = 0;
+			let mut nitems_return       : libc::c_ulong     = 0;
+			let mut bytes_after_return  : libc::c_ulong     = 0;
+			let mut prop_return         : *mut libc::c_char = 0;
+			let res = xlib::XGetWindowProperty(
+				self.display,
+				self.id,
+				atom,
+				0,
+				4096 / 4,
+				0,
+				xa_property_type,
+				&mut actual_type_return,
+				&mut actual_format_return,
+				&mut nitems_return,
+				&mut bytes_after_return,
+				&mut prop_return
+				);
+			if (xa_property_type != actual_type_return) {
+				println!("Invalid type of {} property", property_name);
+				return None;
+			}
+			let tmp_size = (actual_format_return / 8) * nitems_return;
+			let data = c_vec::CVec::new(prop_return, tmp_size);
+			Some(data);
+		}
+	}
+	
 	fn get_tree (&self) -> Option<WindowTree> {
 		unsafe {
 			let mut root: xlib::Window = 0;
