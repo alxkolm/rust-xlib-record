@@ -112,47 +112,21 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 			let c_string = CString::new(std::mem::transmute(c_char), false);
 			let char: &str = c_string.as_str().unwrap();
 			println!("Keycode: {}, Character {}", raw_bytes[1], char);
-
-			
-			// println!("nitems {}", (&*wm_name).nitems);
 		}
-		// get current focus window
-		// let current_window: *mut xlib::Window = &mut 0;
-		// let revert_to_return: *mut i32 = &mut 0;
+		
 		let mut current_window = display_control.get_input_focus();
 		let mut parent_window: Option<Window> = None;
-		// println!("revertToReturn {}", *revert_to_return);
-		// let mut j = 0u;
-		// let mut wm_name: *mut xutil::XTextProperty = std::mem::transmute(&mut j);
-		// let mut wm_name_true: &str = "";
 		let mut wm_name_str: Option<String> = None;
-		// let mut tmp =0i8;
-		// let mut c_wm_name: CString = CString::new(&tmp,false);
-		// let mut res = 0;
-		// res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
+		
 		let mut i = 0u;
-		while i < 2 {
-			// print!(".");
-			// println!("current_window {}", current_window.id);
+		while i < 10 {
 			if current_window.id == 0 {
 				break;
 			}
-			// res = xutil::XGetWMName(display_control.display, *current_window, wm_name);
+			
 			wm_name_str = current_window.get_wm_name();
 			match wm_name_str {
 				None => {
-					// println!("Move to parent");
-					// let mut root: xlib::Window = 0;
-					// let mut parent: xlib::Window = 0;
-					// let mut childrens: *mut xlib::Window = &mut 0u64;
-					// let mut nchildren: u32 = 0;
-					// let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
-					// if r2 == 0 {
-					// 	print!("*");
-					// } else {
-					// 	println!("parent {}", parent);
-					// 	*current_window = parent;
-					// }
 					let tree = current_window.get_tree();
 					parent_window = match tree {
 						Some(WindowTree{parent: parent, children: _}) => {
@@ -163,6 +137,7 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 					
 				},
 				Some(ref wmname) => {
+					// wm_name_str = Some(wmname);
 					break;
 				}
 			}
@@ -172,21 +147,6 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 				_ => current_window
 			};
 			
-			// if res == 0 {
-			// 	// println!("Move to parent");
-			// 	// let mut root: xlib::Window = 0;
-			// 	// let mut parent: xlib::Window = 0;
-			// 	// let mut childrens: *mut xlib::Window = &mut 0u64;
-			// 	// let mut nchildren: u32 = 0;
-			// 	// let r2 = xlib::XQueryTree(display_control.display, *current_window, &mut root, &mut parent, &mut childrens, &mut nchildren);
-			// 	// if r2 == 0 {
-			// 	// 	print!("*");
-			// 	// } else {
-			// 	// 	println!("parent {}", parent);
-			// 	// 	*current_window = parent;
-			// 	// }
-			// }
-			// get parent window
 			i += 1;
 		}
 		match wm_name_str {
@@ -197,46 +157,6 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 				println!("WM_NAME: none");
 			}
 		}
-		// println!("---");
-		// if res == 0 {
-		// 	println!("no wmname");
-		// } else {
-		// 	// extract name from XTextProperty
-		// 	println!("wmname found!");
-		// 	println!("format: {}", (*wm_name).format);
-		// 	if (*wm_name).format != 8 {
-		// 		panic!("");
-		// 	}
-		// 	println!("encoding: {}", (*wm_name).encoding);
-		// 	let encoding_name = xlib::XGetAtomName(display_control.display, (*wm_name).encoding);
-		// 	let encoding_name_string = CString::new(std::mem::transmute(encoding_name), false);
-		// 	println!("encoding name: {}", encoding_name_string.as_str().unwrap());
-		// 	let mut tmp2 = 0i8;
-		// 	let mut list: *mut *mut ::libc::c_char = std::mem::transmute(&mut &mut tmp2);
-		// 	let mut list_count: i32 = 0;
-		// 	let res3 = xutil::XmbTextPropertyToTextList(display_control.display, std::mem::transmute(wm_name), &mut list, &mut list_count);
-		// 	println!("convert result: {}", res3);
-		// 	if res3 == 0 {
-		// 		println!("list count {}", list_count);
-		// 		c_wm_name = CString::new(std::mem::transmute(*list), false);
-		// 		wm_name_true = c_wm_name.as_str().unwrap();
-		// 		println!("wm_name: {}", wm_name_true);
-		// 		xlib::XFreeStringList(list);
-		// 	} else {
-		// 		c_wm_name = CString::new(std::mem::transmute((*wm_name).value), false);
-		// 		// wm_name_true = c_wm_name.as_str().unwrap();
-		// 		println!("wm_name bytes: {}", c_wm_name.as_bytes());
-		// 		// ая -      27 45 76 208 239 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-		// 		// бв -      27 45 76 209 210 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-		// 		// zx -      122 120 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-		// 		// длодлод - 27 45 76 212 219 222 212 219 222 212 32 27 37 71 226 128 162 27 37 64 32 45 32 83 117 98 108 105 109 101 32 84 101 120 116 32 40 85 78 82 69 71 73 83 84 69 82 69 68 41 0
-		// 		// zx • - Sublime Text (UNREGISTERED)
-
-		// 		println!("wm_name: {}", c_wm_name);
-		// 		println!("wm_name len w/o null: {}", c_wm_name.len());
-		// 	}
-			
-		// }
 
 		XRecordFreeData(raw_data);
 	}
@@ -266,13 +186,13 @@ impl<'a> Display<'a> {
 		let current_window: *mut xlib::Window = &mut 0;
 		let revert_to_return: *mut i32 = &mut 0;
 		unsafe{xlib::XGetInputFocus(self.display, current_window, revert_to_return)};
-		Window {id: 0, display: self}
+		Window {id: unsafe{*current_window}, display: self.display}
 	}
 }
 
 struct Window<'a> {
     id: u64, // XID
-    display: &'a Display<'a>
+    display: *mut xlib::Display
 }
 
 impl<'a> Window<'a> {
@@ -280,7 +200,7 @@ impl<'a> Window<'a> {
 		let mut a:String = String::new();
 		let wmname = unsafe {
 			let mut window_name: *mut i8 = 0 as *mut i8;
-			let res = xlib::XFetchName(self.display.display, self.id, &mut window_name);
+			let res = xlib::XFetchName(self.display, self.id, &mut window_name);
 			if res != 0 {
 				let c_wm_name = CString::new(std::mem::transmute(window_name), false);
 				// xlib::XFree(&mut window_name);
@@ -300,7 +220,7 @@ impl<'a> Window<'a> {
 			let mut nchildren: u32 = 0;
 
 			let res = xlib::XQueryTree(
-				self.display.display,
+				self.display,
 				self.id,
 				&mut root,
 				&mut parent,
