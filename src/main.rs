@@ -7,6 +7,7 @@ use std::ptr;
 use xtst::{XRecordCreateContext, XRecordAllClients, XRecordAllocRange, XRecordRange, XRecordQueryVersion, XRecordEnableContext, XRecordEnableContextAsync,XRecordInterceptData, XRecordProcessReplies, XRecordFreeData};
 use std::mem;
 use std::c_str::CString;
+use std::c_vec;
 mod xtst;
 mod xlib;
 mod xlibint;
@@ -197,34 +198,43 @@ struct Window<'a> {
 
 impl<'a> Window<'a> {
 	fn get_wm_name(&self) -> Option<String> {
-		let mut a:String = String::new();
-		let wmname = unsafe {
-			let mut window_name: *mut i8 = 0 as *mut i8;
-			let res = xlib::XFetchName(self.display, self.id, &mut window_name);
-			if res != 0 {
-				let c_wm_name = CString::new(std::mem::transmute(window_name), false);
-				// xlib::XFree(&mut window_name);
-				Some(String::from_str(c_wm_name.as_str().unwrap()))
-			} else {
-				// Try get _NET_WM_NAME
-				None
+		// let mut a:String = String::new();
+		// let wmname = unsafe {
+			// let mut window_name: *mut i8 = 0 as *mut i8;
+			// let res = xlib::XFetchName(self.display, self.id, &mut window_name);
+			// if res != 0 {
+			// 	let c_wm_name = CString::new(std::mem::transmute(window_name), false);
+			// 	// xlib::XFree(&mut window_name);
+			// 	Some(String::from_str(c_wm_name.as_str().unwrap()))
+			// } else {
+			// 	// Try get _NET_WM_NAME
+			// 	None
+			// }
+			let wmname_c = self.get_property("_NET_WM_NAME", "UTF8_STRING");
+			match wmname_c {
+				Some(bytes) => match String::from_utf8(bytes){
+					Ok(value) => Some(value),
+					Err(err) => {println!("Error: {}", err); None}
+				},
+				None => None
 			}
-		};
-		wmname
+		// };
+		// wmname
 	}
-	fn get_property(&self, property_name: &str, property_type: &str) -> Option<CVec>{
+	fn get_property(&self, property_name: &str, property_type: &str) -> Option<Vec<u8>>{
 		unsafe {
 			let xa_property_type: xlibint::Atom = xlib::XInternAtom(self.display, property_type.to_c_str().as_ptr(), 0);
-			let xa_property_name: xlibint::Atom = xlib::XInternAtom(self.display, property_name.to_c_str().as_ptr(), 0)
+			let xa_property_name: xlibint::Atom = xlib::XInternAtom(self.display, property_name.to_c_str().as_ptr(), 0);
 			let mut actual_type_return  : xlibint::Atom     = 0;
 			let mut actual_format_return: libc::c_int       = 0;
 			let mut nitems_return       : libc::c_ulong     = 0;
 			let mut bytes_after_return  : libc::c_ulong     = 0;
-			let mut prop_return         : *mut libc::c_char = 0;
+			let mut tmp                 : libc::c_uchar     = 0u8;
+			let mut prop_return         : *mut libc::c_uchar = mem::transmute(&mut tmp);
 			let res = xlib::XGetWindowProperty(
 				self.display,
 				self.id,
-				atom,
+				xa_property_name,
 				0,
 				4096 / 4,
 				0,
@@ -239,9 +249,17 @@ impl<'a> Window<'a> {
 				println!("Invalid type of {} property", property_name);
 				return None;
 			}
-			let tmp_size = (actual_format_return / 8) * nitems_return;
-			let data = c_vec::CVec::new(prop_return, tmp_size);
-			Some(data);
+			let tmp_size = ((actual_format_return as u64) / 8) * nitems_return;
+			
+			let data = c_vec::CVec::new(prop_return, tmp_size as uint);
+			let mut copy_data = Vec::with_capacity(tmp_size as uint);
+			for b in data.as_slice().iter() {
+				copy_data.push(*b);
+			}
+			
+			xlib::XFree(prop_return as *mut libc::types::common::c95::c_void);
+			
+			Some(copy_data)
 		}
 	}
 	
