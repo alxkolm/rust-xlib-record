@@ -92,18 +92,17 @@ fn main() {
 extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptData) {
 
 	unsafe {
-
+		event_count += 1;
 		let data = &*raw_data;
-		// println!("Category {}", data.category);
+		
 		if data.category != xtst::XRecordFromServer {
 			return;
 		}
 
-
 		println!("Event count: {}", event_count);
-		event_count += 1;
 		println!("Time {}", data.server_time);
 		println!("Datalen {}", data.data_len);
+
 		let mut xdatum_ptr: *mut XRecordDatum = data.data as *mut XRecordDatum;
 		let mut xdatum = &*xdatum_ptr;
 		
@@ -131,22 +130,18 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 			}
 			
 			wm_name_str = current_window.get_wm_name();
-			match wm_name_str {
-				None => {
-					let tree = current_window.get_tree();
+			if wm_name_str.is_none() || wm_name_str.clone().unwrap() == "FocusProxy".to_string() {
+				let tree = current_window.get_tree();
 					parent_window = match tree {
 						Some(WindowTree{parent: parent, children: _}) => {
 							Some(parent)
 						},
 						_ => None
 					}
-					
-				},
-				Some(ref wmname) => {
-					break;
-				}
+			} else {
+				break;
 			}
-			
+						
 			current_window = match parent_window {
 				Some(win) => win,
 				_ => current_window
