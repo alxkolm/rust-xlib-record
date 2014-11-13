@@ -24,10 +24,6 @@ struct XRecordDatum {
   setup: ::xlibint::xConnSetupPrefix,
 }
 
-// let mut display_control: *mut xlib::Display  = std::mem::transmute(0);
-// let mut display_data: *mut xlib::Display  = std::mem::transmute(0);
-// static mut display_control: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
-// static mut display_data: *mut xlib::Display = 0 as *mut xlib::Struct__XDisplay;
 static mut display_control: Display<'static> = Display {display: 0 as *mut xlib::Display};
 static mut display_data: Display<'static> = Display {display: 0 as *mut xlib::Display};
 static mut event_count:u32 = 0;
@@ -102,6 +98,8 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		if data.category != xtst::XRecordFromServer {
 			return;
 		}
+
+
 		println!("Event count: {}", event_count);
 		event_count += 1;
 		println!("Time {}", data.server_time);
@@ -145,7 +143,6 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 					
 				},
 				Some(ref wmname) => {
-					// wm_name_str = Some(wmname);
 					break;
 				}
 			}
