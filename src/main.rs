@@ -8,6 +8,8 @@ use xtst::{XRecordCreateContext, XRecordAllClients, XRecordAllocRange, XRecordRa
 use std::mem;
 use std::c_str::CString;
 use std::c_vec;
+use std::time::Duration;
+use std::io::Timer;
 mod xtst;
 mod xlib;
 mod xlibint;
@@ -80,7 +82,12 @@ fn main() {
 			panic!("Cound not enable the Record context!\n");
 		}
 		xtst::XRecordFreeContext(display_data.display, context);
+
+		// without this timer process consume 100% CPU
+		let mut timer = Timer::new().unwrap();
+		let periodic = timer.periodic(Duration::milliseconds(1000));
 		loop {
+			periodic.recv();
 			XRecordProcessReplies(display_data.display);
 		}
 	}
