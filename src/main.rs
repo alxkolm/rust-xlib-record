@@ -186,12 +186,12 @@ impl<'a> Display<'a> {
 		let current_window: *mut xlib::Window = &mut 0;
 		let revert_to_return: *mut i32 = &mut 0;
 		unsafe{xlib::XGetInputFocus(self.display, current_window, revert_to_return)};
-		Window {id: unsafe{*current_window}, display: self.display}
+		Window {id: unsafe{*current_window as uint}, display: self.display}
 	}
 }
 
 struct Window<'a> {
-    id: u64, // XID
+    id: uint, // XID
     display: *mut xlib::Display
 }
 
@@ -232,7 +232,7 @@ impl<'a> Window<'a> {
 			let mut prop_return         : *mut libc::c_uchar = mem::transmute(&mut tmp);
 			let res = xlib::XGetWindowProperty(
 				self.display,
-				self.id,
+				self.id as u32,
 				xa_property_name,
 				0,
 				4096 / 4,
@@ -248,7 +248,7 @@ impl<'a> Window<'a> {
 				println!("Invalid type of {} property", property_name);
 				return None;
 			}
-			let tmp_size = ((actual_format_return as u64) / 8) * nitems_return;
+			let tmp_size = ((actual_format_return as uint) / 8) * (nitems_return as uint);
 			
 			let data = c_vec::CVec::new(prop_return, tmp_size as uint);
 			let mut copy_data = Vec::with_capacity(tmp_size as uint);
@@ -266,12 +266,12 @@ impl<'a> Window<'a> {
 		unsafe {
 			let mut root: xlib::Window = 0;
 			let mut parent: xlib::Window = 0;
-			let mut children: *mut xlib::Window = &mut 0u64;
+			let mut children: *mut xlib::Window = mem::transmute(&mut 0u);
 			let mut nchildren: u32 = 0;
 
 			let res = xlib::XQueryTree(
 				self.display,
-				self.id,
+				self.id as u32,
 				&mut root,
 				&mut parent,
 				&mut children,
@@ -287,7 +287,7 @@ impl<'a> Window<'a> {
 							let mut b: Vec<Window> = Vec::new();
 							for i in range(0, nchildren as int){
 								b.push(Window{
-									id: *children.offset(i),
+									id: mem::transmute(*children.offset(i)),
 									display: self.display
 								});
 							}
@@ -297,7 +297,7 @@ impl<'a> Window<'a> {
 
 					Some(WindowTree {
 						parent: Window{
-							id: parent,
+							id: parent as uint,
 							display: self.display,
 						},
 						children: childs
