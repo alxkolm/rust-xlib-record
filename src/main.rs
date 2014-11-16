@@ -101,7 +101,16 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 
 		println!("Event count: {}", event_count);
 		println!("Time {}", data.server_time);
-		println!("Datalen {}", data.data_len);
+		println!("Datalen {} bits ({} 4-bits unit)", data.data_len * 4, data.data_len);
+
+		// print data bits
+		let data_bytes_vec = c_vec::CVec::new(data.data, ((data.data_len * 4)/8) as uint);
+		let mut data_bytes: String = String::new();
+		for i in data_bytes_vec.as_slice().iter(){
+			data_bytes.push_str((*i).to_string().as_slice());
+			data_bytes.push_str(" ");
+		}
+		println!("Data: {}", data_bytes);
 
 		let mut xdatum_ptr: *mut XRecordDatum = data.data as *mut XRecordDatum;
 		let mut xdatum = &*xdatum_ptr;
