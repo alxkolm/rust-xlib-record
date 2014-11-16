@@ -232,7 +232,7 @@ impl<'a> Window<'a> {
 			let mut prop_return         : *mut libc::c_uchar = mem::transmute(&mut tmp);
 			let res = xlib::XGetWindowProperty(
 				self.display,
-				self.id as u32,
+				mem::transmute(self.id),
 				xa_property_name,
 				0,
 				4096 / 4,
@@ -271,7 +271,7 @@ impl<'a> Window<'a> {
 
 			let res = xlib::XQueryTree(
 				self.display,
-				self.id as u32,
+				mem::transmute(self.id),
 				&mut root,
 				&mut parent,
 				&mut children,
