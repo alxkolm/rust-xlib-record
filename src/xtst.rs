@@ -34,6 +34,11 @@ use xlib::*;
 // #define XRecordStartOfData    4
 // #define XRecordEndOfData    5
 
+
+pub const XRecordFromServerTime: ::libc::c_int = 0x01;
+pub const XRecordFromClientTime: ::libc::c_int = 0x02;
+pub const XRecordFromClientSequence: ::libc::c_int = 0x04;
+
 pub const XRecordCurrentClients: ::libc::c_ulong = 1;
 pub const XRecordFutureClients: ::libc::c_ulong = 2;
 pub const XRecordAllClients: ::libc::c_ulong = 3;

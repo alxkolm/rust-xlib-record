@@ -27,6 +27,7 @@ struct XRecordDatum {
 static mut display_control: Display<'static> = Display {display: 0 as *mut xlib::Display};
 static mut display_data: Display<'static> = Display {display: 0 as *mut xlib::Display};
 static mut event_count:u32 = 0;
+static mut prev_time:u64 = 0;
 fn main() {
 	unsafe {
 		let mut a:  i8 = 0;
@@ -56,8 +57,9 @@ fn main() {
 		// Prepare record range
 		let mut recordRange: XRecordRange = *XRecordAllocRange();
 		let mut recordRangePtr: *mut *mut XRecordRange = std::mem::transmute(&mut &mut recordRange);
-		recordRange.device_events.first = 2; // KeyPress
-		recordRange.device_events.last = 6; // MotionNotify
+		recordRange.device_events.first = xtst::KeyPress; // KeyPress
+		recordRange.device_events.last = xtst::MotionNotify; // MotionNotify
+		
 		
 		// Create context
 		let context = XRecordCreateContext(
@@ -81,7 +83,7 @@ fn main() {
 
 		// without this timer process consume 100% CPU
 		let mut timer = Timer::new().unwrap();
-		let periodic = timer.periodic(Duration::milliseconds(1000));
+		let periodic = timer.periodic(Duration::milliseconds(100));
 		loop {
 			periodic.recv();
 			XRecordProcessReplies(display_data.display);
@@ -98,10 +100,12 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		if data.category != xtst::XRecordFromServer {
 			return;
 		}
-
-		println!("Event count: {}", event_count);
-		println!("Time {}", data.server_time);
-		println!("Datalen {} bits ({} 4-bits unit)", data.data_len * 4, data.data_len);
+		
+		let delta = data.server_time - prev_time;
+		// println!("Event count: {}", event_count);
+		// println!("Time {}, delta: {}", data.server_time, delta);
+		prev_time = data.server_time;
+		// println!("Datalen {} bits ({} 4-bits unit)", data.data_len * 4, data.data_len);
 
 		// print data bits
 		let data_bytes_vec = c_vec::CVec::new(data.data, ((data.data_len * 4)/8) as uint);
@@ -116,7 +120,11 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 		let mut xdatum = &*xdatum_ptr;
 		
 		let mut event = xdatum.event;
-		println!("Type {}", xdatum.xtype);
+
+		// let key_event: *mut xlib::XKeyEvent = event.xkey();
+		// println!("w: {}", (*key_event).window);
+		// println!("Type {}", xdatum.xtype);
+		println!("{}, XID: {:x}, Datalen {} bits ({} unit 4-bits)",data.server_time, data.id_base, data.data_len * 4, data.data_len);
 
 		// Catch key event
 		if xdatum.xtype == xtst::KeyPress || xdatum.xtype == xtst::KeyRelease {
@@ -158,18 +166,20 @@ extern "C" fn recordCallback(pointer:*mut i8, raw_data: *mut XRecordInterceptDat
 			
 			i += 1;
 		}
+		let win_class = current_window.get_class();
+		println!("wmclass: {}", win_class);
 		match wm_name_str {
 			Some(ref name) => {
-				println!("WM_NAME: {}", *name);
+				// println!("WM_NAME: {}", *name);
 			},
 			None => {
-				println!("WM_NAME: none");
+				// println!("WM_NAME: none");
 			}
 		}
 
 		XRecordFreeData(raw_data);
 	}
-	println!("\n");
+	// println!("\n");
 }
 
 
@@ -229,6 +239,32 @@ impl<'a> Window<'a> {
 		// };
 		// wmname
 	}
+	pub fn get_class(&self) -> Option<Vec<String>> {
+		let property_c = self.get_property("WM_CLASS", "STRING");
+
+		let chunks = match property_c{
+			Some(b) => Window::splitByNullByte(b),
+			None => None
+		};
+		let mut strings: Vec<String> = Vec::new();
+		match chunks {
+			Some(ref items) => {
+				for bytes in items.iter() {
+					match String::from_utf8((*bytes).clone()) {
+						Ok(value) => {
+							strings.push(value);
+						}
+						Err(_) => {}
+					}
+				}
+			},
+			None => {}
+		}
+		match strings.len() {
+			0 => None,
+			_ => Some(strings)
+		}
+	}
 	fn get_property(&self, property_name: &str, property_type: &str) -> Option<Vec<u8>>{
 		unsafe {
 			let xa_property_type: xlibint::Atom = xlib::XInternAtom(self.display, property_type.to_c_str().as_ptr(), 0);
@@ -254,20 +290,42 @@ impl<'a> Window<'a> {
 				&mut prop_return
 				);
 			if (xa_property_type != actual_type_return) {
-				println!("Invalid type of {} property", property_name);
+				// println!("Invalid type of {} property", property_name);
 				return None;
 			}
 			let tmp_size = ((actual_format_return as uint) / 8) * (nitems_return as uint);
-			
+			println!("length: {}", tmp_size);
 			let data = c_vec::CVec::new(prop_return, tmp_size as uint);
 			let mut copy_data = Vec::with_capacity(tmp_size as uint);
 			for b in data.as_slice().iter() {
 				copy_data.push(*b);
+				print!(" {:x}", *b);
 			}
-			
+			println!("");
 			xlib::XFree(prop_return as *mut libc::types::common::c95::c_void);
 			
 			Some(copy_data)
+		}
+	}
+
+	fn splitByNullByte (buf: Vec<u8>) -> Option<Vec<Vec<u8>>> {
+		let mut strings: Vec<Vec<u8>> = Vec::new();
+		let mut current_string = Vec::new();
+		for b in buf.iter() {
+			if (*b != 0) {
+				current_string.push(*b);
+			} else {
+				strings.push(current_string.clone());
+				current_string = Vec::new();
+			}
+		}
+		if (current_string.len() > 0) {
+			strings.push(current_string.clone());
+		}
+		
+		match strings.len() {
+			0 => None,
+			_ => Some(strings)
 		}
 	}
 	
